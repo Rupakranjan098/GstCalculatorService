@@ -23,6 +23,8 @@ export default function Billing() {
     selectedInvoiceForSummary
   } = useOutletContext();
 
+  const [activeActionMenu, setActiveActionMenu] = useState(null);
+
   // Form states
   const [billingCustomer, setBillingCustomer] = useState('c1'); 
   const [billingItems, setBillingItems] = useState([{ productId: 'p1', quantity: 2 }]); 
@@ -454,10 +456,60 @@ export default function Billing() {
                   <td className="px-5 py-3">
                     <StatusPill value={inv.status} />
                   </td>
-                  <td className="px-5 py-3 text-slate-400">
-                    <button className="p-1 hover:bg-slate-100 rounded-lg">
+                  <td className="px-5 py-3 text-slate-400 relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveActionMenu(activeActionMenu === inv.id ? null : inv.id);
+                      }}
+                      className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </button>
+                    {activeActionMenu === inv.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setActiveActionMenu(null)}
+                        />
+                        <div className="absolute right-5 mt-1 w-36 bg-white border border-slate-100 rounded-xl shadow-lg py-1.5 z-20 text-xs font-semibold text-slate-700">
+                          <button
+                            onClick={() => {
+                              setSelectedInvoiceForSummary(inv);
+                              setActiveActionMenu(null);
+                              setTimeout(() => {
+                                window.print();
+                              }, 100);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5 text-slate-400" />
+                            Print Invoice
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete invoice ${inv.invoiceNumber}?`)) {
+                                setInvoices(prev => prev.filter(item => item.id !== inv.id));
+                                const log = {
+                                  id: `log-${Date.now()}`,
+                                  user: currentUser.name,
+                                  role: currentUser.role,
+                                  action: `Deleted Invoice ${inv.invoiceNumber}`,
+                                  timestamp: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + `, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+                                  details: `Invoice for ${inv.customerName} worth ₹${inv.grandTotal.toLocaleString('en-IN')} was deleted.`
+                                };
+                                setActivityLogs(prev => [log, ...prev]);
+                                setActiveActionMenu(null);
+                              }
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 hover:text-rose-700 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            Delete Invoice
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
