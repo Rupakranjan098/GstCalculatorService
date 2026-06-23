@@ -25,7 +25,58 @@ const setStorageItem = (key, value) => {
   }
 };
 
+// Seed default users
+const defaultUsers = [
+  {
+    name: 'Vikram Malhotra',
+    email: 'owner@apex.com',
+    password: 'password',
+    role: 'Owner'
+  },
+  {
+    name: 'Neha Sharma',
+    email: 'staff@apex.com',
+    password: 'password',
+    role: 'Staff'
+  }
+];
+
 export const apiService = {
+  // Authentication
+  getUsers: () => getStorageItem('auth_users', defaultUsers),
+  
+  register: (name, email, password, role) => {
+    const users = getStorageItem('auth_users', defaultUsers);
+    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      throw new Error('User already exists with this email.');
+    }
+    const newUser = { name, email, password, role };
+    users.push(newUser);
+    setStorageItem('auth_users', users);
+    return newUser;
+  },
+
+  login: (email, password) => {
+    const users = getStorageItem('auth_users', defaultUsers);
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (!user) {
+      throw new Error('Invalid email or password.');
+    }
+    setStorageItem('current_session_user', user);
+    return user;
+  },
+
+  logout: () => {
+    try {
+      localStorage.removeItem('current_session_user');
+    } catch (e) {}
+  },
+
+  getCurrentUser: () => {
+    return getStorageItem('current_session_user', null);
+  },
+
+  // Business DB profile
   getBusinessProfile: () => getStorageItem('business_profile', initialBusinessProfile),
   saveBusinessProfile: (profile) => {
     setStorageItem('business_profile', profile);

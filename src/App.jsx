@@ -6,7 +6,8 @@ import {
   Outlet,
   Link,
   useLocation,
-  useNavigate
+  useNavigate,
+  Navigate
 } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -70,23 +71,14 @@ function LayoutShell() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Redirect to login if no session is found
-  useEffect(() => {
-    const session = localStorage.getItem('active_session');
-    if (!session && location.pathname !== '/login' && location.pathname !== '/register') {
-      navigate('/login');
-    }
-  }, [location.pathname, navigate]);
+  // Route guarding: check active authentication session
+  const activeSessionUser = apiService.getCurrentUser();
+  if (!activeSessionUser) {
+    return <Navigate to="/login" replace />;
+  }
 
   // Root States loaded from localStorage (via apiService)
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const active = localStorage.getItem('active_session');
-      return active ? JSON.parse(active) : { name: 'Vikram Malhotra', role: 'Owner' };
-    } catch(e) {
-      return { name: 'Vikram Malhotra', role: 'Owner' };
-    }
-  });
+  const [currentUser, setCurrentUser] = useState(() => activeSessionUser);
   const [businessProfile, setBusinessProfile] = useState(() => apiService.getBusinessProfile());
   const [products, setProducts] = useState(() => apiService.getProducts());
   const [customers, setCustomers] = useState(() => apiService.getCustomers());
@@ -216,40 +208,27 @@ function LayoutShell() {
         </div>
 
         {/* User Selector Block */}
-        <div className="p-3 lg:p-4 border-t border-slate-50 bg-[#F8FAFC]/55 m-2 lg:m-3 rounded-2xl">
-          <div className="flex flex-col gap-2 items-center lg:items-start">
-            <div className="flex items-center gap-3 justify-center lg:justify-start">
-              <div className="w-9 h-9 rounded-full bg-[#E0E7FF] flex items-center justify-center text-[#4F46E5] font-extrabold text-xs shrink-0">
-                {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('') : 'VM'}
-              </div>
-              <div className="hidden lg:block flex-1 min-w-0">
-                <p className="text-[11px] font-extrabold text-slate-800 leading-none">{currentUser.name || 'Vikram Malhotra'}</p>
-                <div className="relative inline-block mt-1">
-                  <select
-                    value={currentUser.role}
-                    onChange={(e) => {
-                      setCurrentUser(prev => ({ ...prev, role: e.target.value }));
-                    }}
-                    className="appearance-none bg-transparent pr-4 text-[10px] font-bold text-[#4F46E5] focus:outline-none cursor-pointer"
-                  >
-                    <option value="Owner">Owner Role</option>
-                    <option value="Staff">Staff Role</option>
-                  </select>
-                </div>
+        <div className="p-3 lg:p-4 border-t border-slate-50 bg-[#F8FAFC]/55 m-2 lg:m-3 rounded-2xl text-left">
+          <div className="flex items-center gap-3 justify-center lg:justify-start">
+            <div className="w-9 h-9 rounded-full bg-[#E0E7FF] flex items-center justify-center text-[#4F46E5] font-extrabold text-xs shrink-0">
+              {currentUser ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'VM'}
+            </div>
+            <div className="hidden lg:block flex-1 min-w-0">
+              <p className="text-[11px] font-extrabold text-slate-800 leading-none truncate">{currentUser?.name}</p>
+              <div className="flex justify-between items-center mt-1.5">
+                <span className="text-[10px] font-bold text-[#4F46E5]">{currentUser?.role} Role</span>
+                <button
+                  onClick={() => {
+                    apiService.logout();
+                    navigate('/login');
+                    window.location.reload();
+                  }}
+                  className="text-[9.5px] font-extrabold text-rose-500 hover:text-rose-700 hover:underline cursor-pointer"
+                >
+                  Logout
+                </button>
               </div>
             </div>
-            
-            <button
-              onClick={() => {
-                localStorage.removeItem('active_session');
-                navigate('/login');
-                window.location.reload();
-              }}
-              className="w-full text-center lg:text-left text-[9.5px] font-bold text-rose-500 hover:underline pt-1.5 border-t border-slate-100/50 cursor-pointer"
-            >
-              <span className="hidden lg:inline">Logout Session</span>
-              <span className="lg:hidden">Exit</span>
-            </button>
           </div>
         </div>
       </aside>
