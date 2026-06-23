@@ -39,11 +39,15 @@ import Suppliers from './pages/Suppliers';
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 export default function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/" element={<LayoutShell />}>
           <Route index element={<Dashboard />} />
           <Route path="billing" element={<Billing />} />
@@ -66,8 +70,23 @@ function LayoutShell() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Redirect to login if no session is found
+  useEffect(() => {
+    const session = localStorage.getItem('active_session');
+    if (!session && location.pathname !== '/login' && location.pathname !== '/register') {
+      navigate('/login');
+    }
+  }, [location.pathname, navigate]);
+
   // Root States loaded from localStorage (via apiService)
-  const [currentUser, setCurrentUser] = useState({ name: 'Vikram Malhotra', role: 'Owner' });
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const active = localStorage.getItem('active_session');
+      return active ? JSON.parse(active) : { name: 'Vikram Malhotra', role: 'Owner' };
+    } catch(e) {
+      return { name: 'Vikram Malhotra', role: 'Owner' };
+    }
+  });
   const [businessProfile, setBusinessProfile] = useState(() => apiService.getBusinessProfile());
   const [products, setProducts] = useState(() => apiService.getProducts());
   const [customers, setCustomers] = useState(() => apiService.getCustomers());
@@ -198,25 +217,39 @@ function LayoutShell() {
 
         {/* User Selector Block */}
         <div className="p-3 lg:p-4 border-t border-slate-50 bg-[#F8FAFC]/55 m-2 lg:m-3 rounded-2xl">
-          <div className="flex items-center gap-3 justify-center lg:justify-start">
-            <div className="w-9 h-9 rounded-full bg-[#E0E7FF] flex items-center justify-center text-[#4F46E5] font-extrabold text-xs shrink-0">
-              VM
-            </div>
-            <div className="hidden lg:block flex-1 min-w-0">
-              <p className="text-[11px] font-extrabold text-slate-800 leading-none">Vikram Malhotra</p>
-              <div className="relative inline-block mt-1">
-                <select
-                  value={currentUser.role}
-                  onChange={(e) => {
-                    setCurrentUser({ name: 'Vikram Malhotra', role: e.target.value });
-                  }}
-                  className="appearance-none bg-transparent pr-4 text-[10px] font-bold text-[#4F46E5] focus:outline-none cursor-pointer"
-                >
-                  <option value="Owner">Owner Role</option>
-                  <option value="Staff">Staff Role</option>
-                </select>
+          <div className="flex flex-col gap-2 items-center lg:items-start">
+            <div className="flex items-center gap-3 justify-center lg:justify-start">
+              <div className="w-9 h-9 rounded-full bg-[#E0E7FF] flex items-center justify-center text-[#4F46E5] font-extrabold text-xs shrink-0">
+                {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('') : 'VM'}
+              </div>
+              <div className="hidden lg:block flex-1 min-w-0">
+                <p className="text-[11px] font-extrabold text-slate-800 leading-none">{currentUser.name || 'Vikram Malhotra'}</p>
+                <div className="relative inline-block mt-1">
+                  <select
+                    value={currentUser.role}
+                    onChange={(e) => {
+                      setCurrentUser(prev => ({ ...prev, role: e.target.value }));
+                    }}
+                    className="appearance-none bg-transparent pr-4 text-[10px] font-bold text-[#4F46E5] focus:outline-none cursor-pointer"
+                  >
+                    <option value="Owner">Owner Role</option>
+                    <option value="Staff">Staff Role</option>
+                  </select>
+                </div>
               </div>
             </div>
+            
+            <button
+              onClick={() => {
+                localStorage.removeItem('active_session');
+                navigate('/login');
+                window.location.reload();
+              }}
+              className="w-full text-center lg:text-left text-[9.5px] font-bold text-rose-500 hover:underline pt-1.5 border-t border-slate-100/50 cursor-pointer"
+            >
+              <span className="hidden lg:inline">Logout Session</span>
+              <span className="lg:hidden">Exit</span>
+            </button>
           </div>
         </div>
       </aside>
