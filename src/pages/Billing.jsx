@@ -13,6 +13,7 @@ export default function Billing() {
     products,
     setProducts,
     customers,
+    setCustomers,
     invoices,
     setInvoices,
     setActivityLogs,
@@ -26,6 +27,18 @@ export default function Billing() {
   const [billingCustomer, setBillingCustomer] = useState('c1'); 
   const [billingItems, setBillingItems] = useState([{ productId: 'p1', quantity: 2 }]); 
   const [billingStatus, setBillingStatus] = useState('Paid');
+
+  // Inline Customer Creation Modal States
+  const [showCustModal, setShowCustModal] = useState(false);
+  const [custForm, setCustForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    gstin: '',
+    state: 'Delhi',
+    stateCode: '07',
+    address: ''
+  });
 
   // Calculations for billing fields
   const calculationSummary = useMemo(() => {
@@ -97,14 +110,9 @@ export default function Billing() {
     
     const invoiceNum = `INV/2026/${1000 + invoices.length + 1}`;
     
-    // Check and deduct product stocks
-    let stockValid = true;
     const stockUpdates = products.map(p => {
       const billItem = billingItems.find(bi => bi.productId === p.id);
       if (billItem) {
-        if (p.stock < billItem.quantity) {
-          // Allow sale but trigger warning log/alert
-        }
         return { ...p, stock: Math.max(0, p.stock - billItem.quantity) };
       }
       return p;
@@ -132,7 +140,6 @@ export default function Billing() {
     setInvoices(prev => [newInvoice, ...prev]);
     setSelectedInvoiceForSummary(newInvoice);
 
-    // Update live operation log
     const newLog = {
       id: `log-${Date.now()}`,
       user: currentUser.name,
@@ -143,8 +150,31 @@ export default function Billing() {
     };
     setActivityLogs(prev => [newLog, ...prev]);
 
-    // Reset lines
     setBillingItems([{ productId: 'p1', quantity: 1 }]);
+  };
+
+  const handleCreateCustomerInline = (e) => {
+    e.preventDefault();
+    const newId = `c-${Date.now()}`;
+    const newCust = {
+      ...custForm,
+      id: newId
+    };
+
+    setCustomers(prev => [...prev, newCust]);
+    setBillingCustomer(newId); // auto select
+
+    const log = {
+      id: `log-${Date.now()}`,
+      user: currentUser.name,
+      role: currentUser.role,
+      action: `Added Customer ${custForm.name} (Billing Screen)`,
+      timestamp: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + `, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+      details: `Registered client profile inline during billing`
+    };
+    setActivityLogs(prev => [log, ...prev]);
+
+    setShowCustModal(false);
   };
 
   return (
@@ -163,7 +193,18 @@ export default function Billing() {
 
             {/* Customer Selector */}
             <div className="space-y-1.5 mb-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Select Customer</label>
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Select Customer</label>
+                <button
+                  onClick={() => {
+                    setCustForm({ name: '', email: '', phone: '', gstin: '', state: 'Delhi', stateCode: '07', address: '' });
+                    setShowCustModal(true);
+                  }}
+                  className="text-[10px] font-bold text-[#4F46E5] hover:underline cursor-pointer"
+                >
+                  + Register Client
+                </button>
+              </div>
               <select
                 value={billingCustomer}
                 onChange={(e) => setBillingCustomer(e.target.value)}
@@ -386,7 +427,7 @@ export default function Billing() {
       {/* Invoice list table at the bottom */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-50">
-          <h3 className="font-extrabold text-slate-800 text-sm">Recent Invoices</h3>
+          <h3 className="font-extrabold text-slate-805 text-sm">Recent Invoices</h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -424,6 +465,105 @@ export default function Billing() {
           </table>
         </div>
       </div>
+
+      {/* Inline Customer Registration Modal */}
+      {showCustModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-100 font-sans">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center font-bold text-xs text-slate-700">
+              <span>Register New Client</span>
+              <button onClick={() => setShowCustModal(false)} className="text-slate-455 hover:text-slate-700 text-base font-extrabold cursor-pointer">×</button>
+            </div>
+            
+            <form onSubmit={handleCreateCustomerInline} className="p-5 space-y-4 text-xs font-semibold text-slate-600">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Customer Name</label>
+                <input
+                  type="text"
+                  required
+                  value={custForm.name}
+                  onChange={(e) => setCustForm({ ...custForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4F46E5]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={custForm.email}
+                    onChange={(e) => setCustForm({ ...custForm, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4F46E5]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={custForm.phone}
+                    onChange={(e) => setCustForm({ ...custForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4F46E5]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">GSTIN Identification</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 07ABCDE1234A1Z1"
+                    value={custForm.gstin}
+                    onChange={(e) => setCustForm({ ...custForm, gstin: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4F46E5] font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">State Location</label>
+                  <input
+                    type="text"
+                    required
+                    value={custForm.state}
+                    onChange={(e) => setCustForm({ ...custForm, state: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4F46E5]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Postal Address</label>
+                <textarea
+                  required
+                  rows="2"
+                  value={custForm.address}
+                  onChange={(e) => setCustForm({ ...custForm, address: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#4F46E5]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCustModal(false)}
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-[#4F46E5] hover:bg-[#3F37C9] text-white rounded-xl font-bold shadow-md transition-colors cursor-pointer"
+                >
+                  Save Client
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
